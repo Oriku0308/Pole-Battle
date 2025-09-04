@@ -6,3 +6,5 @@ Assembly-CSharp.csproj
 Assembly-CSharp-Editor.csproj
 Logs/
 Pole-Battle.sln
+.vs/
+obj/
