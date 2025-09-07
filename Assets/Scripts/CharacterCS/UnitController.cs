@@ -1,114 +1,133 @@
 ﻿using UnityEngine;
 using UnityEngine.AI;
+using System;
 
 public class UnitController : MonoBehaviour
 {
-    private NavMeshAgent agent;
-    private AIStateMachine stateMachine;
-    private Renderer unitRenderer;
+    private NavMeshAgent _agent;
+    private AIStateMachine _stateMachine;
+    private Renderer _unitRenderer;
 
-    [Header("AI Parameters")]
-    [SerializeField] private float detectionRange = 10f;
-    [SerializeField] private float attackRange = 2f;
-    [SerializeField] private int hp = 100;
+    [Header("ランタイム情報")]
+    [SerializeField] private bool _isLeader = false;
+    [SerializeField] private bool _isFollowingLeader = false;
 
-    private Transform currentTarget;
-    private Squad mySquad;
-    private bool isLeader = false;
-    private Color originalColor;
+    private Transform _currentTarget;
+    private Squad _mySquad;
+    private Color _originalColor;
 
-    void Awake()
+    private void Awake()
     {
-        agent = GetComponent<NavMeshAgent>();
-        unitRenderer = GetComponent<Renderer>();
-        originalColor = unitRenderer.material.color;
+        _agent = GetComponent<NavMeshAgent>();
+        _unitRenderer = GetComponent<Renderer>();
 
-        agent.speed = 5f;
-        agent.stoppingDistance = 0.1f;
-    }
-
-    void Start()
-    {
-        stateMachine = GetComponent<AIStateMachine>();
-    }
-
-    void Update()
-    {
-        // マウスクリックでキャラクター選択
-        if (Input.GetMouseButtonDown(0))
+        if (_unitRenderer != null)
         {
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out RaycastHit hit))
-            {
-                // このキャラクターがクリックされた場合
-                if (hit.collider.gameObject == gameObject && mySquad != null)
-                {
-                    mySquad.SetLeader(this);
-                }
-                // リーダーの場合は移動指示
-                else if (isLeader && mySquad != null)
-                {
-                    mySquad.MoveTo(hit.point);
-                }
-            }
+            _originalColor = _unitRenderer.material.color;
         }
+
+        _agent.speed = 5f;
+        _agent.stoppingDistance = 0.1f;
+    }
+
+    private void Start()
+    {
+        _stateMachine = GetComponent<AIStateMachine>();
+    }
+
+    // --- 公開メソッド（Squadから呼ばれる） ---
+
+    public void StartFollowingLeader()
+    {
+        _isFollowingLeader = true;
+        Debug.Log($"{gameObject.name}: 班長追従開始");
+    }
+
+    public void StopFollowing()
+    {
+        _isFollowingLeader = false;
+
+        if (_stateMachine != null && _stateMachine.GetCurrentState() != AIState.Defend)
+        {
+            _stateMachine.ChangeState(AIState.Defend);
+        }
+
+        Debug.Log($"{gameObject.name}: 追従停止 - 防衛状態へ");
     }
 
     public void SetSquad(Squad squad)
     {
-        mySquad = squad;
+        _mySquad = squad;
         Debug.Log($"{gameObject.name}: 班設定完了 - {squad.gameObject.name}");
     }
 
     public void SetAsLeader(bool leader)
     {
-        isLeader = leader;
+        _isLeader = leader;
 
         if (leader)
         {
-            // 班長の視覚的区別
+            _isFollowingLeader = false;
             transform.localScale = Vector3.one * 1.2f;
-            unitRenderer.material.color = Color.yellow; // 班長は黄色
+            if (_unitRenderer != null)
+            {
+                _unitRenderer.material.color = Color.yellow;
+            }
+
+            if (_agent != null)
+            {
+                _agent.ResetPath();
+                _agent.isStopped = false;
+            }
+
             Debug.Log($"{gameObject.name}: 班長に設定");
         }
         else
         {
-            // 通常メンバーに戻す
             transform.localScale = Vector3.one;
-            unitRenderer.material.color = originalColor;
+            if (_unitRenderer != null)
+            {
+                _unitRenderer.material.color = _originalColor;
+            }
         }
     }
 
-    public AIStateMachine GetStateMachine() => stateMachine;
-
     public bool IsMoving()
     {
-        if (agent == null) return false;
-        if (agent.pathPending) return true;
-        return agent.hasPath && agent.remainingDistance > 0.5f;
+        if (_agent == null) return false;
+        if (_agent.pathPending) return true;
+        return _agent.hasPath && _agent.remainingDistance > 0.3f;
     }
 
     public void StopMoving()
     {
-        if (agent != null)
+        if (_agent != null)
         {
-            agent.ResetPath();
+            _agent.ResetPath();
+            _agent.isStopped = false;
         }
     }
 
     public void MoveTo(Vector3 position)
     {
-        if (agent != null)
+        if (_agent != null)
         {
-            agent.SetDestination(position);
+            _agent.isStopped = false;
+            _agent.ResetPath();
+
+            bool success = _agent.SetDestination(position);
+            if (!success)
+            {
+                Debug.LogWarning($"{gameObject.name}: NavMesh経路設定失敗");
+            }
         }
     }
 
     public void SetColor(Color color)
     {
-        if (unitRenderer != null && !isLeader)
-        { // 班長の色は変更しない
-            unitRenderer.material.color = color;
+        if (_unitRenderer != null && !_isLeader)
+        {
+            _unitRenderer.material.color = color;
         }
     }
 
@@ -119,6 +138,12 @@ public class UnitController : MonoBehaviour
 
     public void SetTarget(Transform target)
     {
-        currentTarget = target;
+        _currentTarget = target;
     }
+
+    // プロパティ
+    public AIStateMachine GetStateMachine() => _stateMachine;
+    public bool IsLeader => _isLeader;
+    public bool IsFollowingLeader => _isFollowingLeader;
+    public Vector3 Position => transform.position;
 }

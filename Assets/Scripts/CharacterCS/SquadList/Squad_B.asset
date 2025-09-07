@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f3912586efbc88240b64166e5c74a171, type: 3}
+  m_Name: Squad_B
+  m_EditorClassIdentifier: 
+  _compositionName: 
+  _unitPrefabs:
+  - {fileID: 7064561336837585931, guid: 0c3a78529464abb43a6b1350c591d96b, type: 3}
+  - {fileID: 7064561336837585931, guid: 0c3a78529464abb43a6b1350c591d96b, type: 3}
+  - {fileID: 7064561336837585931, guid: 0c3a78529464abb43a6b1350c591d96b, type: 3}
+  - {fileID: 7064561336837585931, guid: 0c3a78529464abb43a6b1350c591d96b, type: 3}
+  - {fileID: 7064561336837585931, guid: 0c3a78529464abb43a6b1350c591d96b, type: 3}
+  _formationRadius: 0.5
+  _spawnOffset: {x: 0, y: 0, z: 0}
