@@ -6,8 +6,8 @@ public class MoveState : AIStateBase
 
     public override void Enter()
     {
-        // 移動開始時の処理
-        unit.SetColor(Color.blue); // 視覚的フィードバック
+        Debug.Log($"{unit.gameObject.name}: 移動状態開始");
+        unit.SetColor(Color.blue); // 移動中は青色
     }
 
     public override void Update()
@@ -15,12 +15,13 @@ public class MoveState : AIStateBase
         // 目的地に到着したかチェック
         if (!unit.IsMoving())
         {
+            Debug.Log($"{unit.gameObject.name}: 目的地到着、防衛状態へ");
             unit.GetStateMachine().ChangeState(AIState.Defend);
         }
     }
 
     public override void Exit()
     {
-        // 移動終了時の処理
+        Debug.Log($"{unit.gameObject.name}: 移動状態終了");
     }
 }
