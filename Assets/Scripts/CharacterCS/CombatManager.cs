@@ -204,8 +204,12 @@ public class CombatManager : MonoBehaviour
     {
         _isDead = true;
 
+        // 班に死亡を通知
         if (_unitController != null)
         {
+            Squad squad = _unitController.transform.parent?.GetComponent<Squad>();
+            squad?.OnUnitDied(_unitController);
+
             _unitController.StopMoving();
             _unitController.GetStateMachine().enabled = false;
         }

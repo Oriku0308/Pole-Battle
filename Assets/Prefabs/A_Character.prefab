@@ -148,8 +148,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6502722fbbc372848813fb6724026b30, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _isLeader: 0
-  _isFollowingLeader: 0
 --- !u!114 &5149662237271778397
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -175,12 +173,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _attackStartRange: 2
-  _attackChaseRange: 10
+  _attackChaseRange: 5
   _attackInterval: 1
   _attackDamage: 20
   _normalSpeed: 5
   _combatSpeed: 3
   _maxHP: 100
   _currentHP: 0
-  _isDead: 0
-  _currentTarget: {fileID: 0}

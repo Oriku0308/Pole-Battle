@@ -663,7 +663,7 @@ MonoBehaviour:
   _followUpdateInterval: 0.1
   _leaderDistance: 1.5
   _memberAvoidanceDistance: 1.5
-  _spawnedUnits: []
+  _destinationPoint: {fileID: 1612803530}
 --- !u!4 &1127175500
 Transform:
   m_ObjectHideFlags: 0
@@ -729,7 +729,7 @@ MonoBehaviour:
   _followUpdateInterval: 0.1
   _leaderDistance: 1.5
   _memberAvoidanceDistance: 1.5
-  _spawnedUnits: []
+  _destinationPoint: {fileID: 1078335868}
 --- !u!4 &1200921544
 Transform:
   m_ObjectHideFlags: 0

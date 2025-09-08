@@ -15,8 +15,11 @@ public class Squad : MonoBehaviour
     [SerializeField] private float _leaderDistance = 2f;
     [SerializeField] private float _memberAvoidanceDistance = 1.5f;
 
-    [Header("ランタイム情報")]
-    [SerializeField] private List<UnitController> _spawnedUnits = new List<UnitController>();
+    [Header("目的地設定")]
+    [SerializeField] private Transform _destinationPoint;    // 目的地のTransform
+
+
+    private List<UnitController> _spawnedUnits = new List<UnitController>();
 
     private UnitController _currentLeader;
     private float _lastFollowUpdateTime = 0f;
@@ -253,6 +256,76 @@ public class Squad : MonoBehaviour
         return basePosition + offset;
     }
 
+    /// <summary>
+    /// ユニット死亡時の処理（CombatManagerから呼ばれる）
+    /// </summary>
+    public void OnUnitDied(UnitController deadUnit)
+    {
+        if (!IsMember(deadUnit)) return;
+
+        Debug.Log($"{GetSquadName()}: {deadUnit.gameObject.name}が死亡しました");
+
+        // リストから除去
+        _spawnedUnits.Remove(deadUnit);
+
+        // 班長が死んだ場合の処理
+        if (_currentLeader == deadUnit)
+        {
+            _currentLeader = null;
+            SelectNewLeader();
+        }
+
+        // 班が全滅した場合の処理
+        if (_spawnedUnits.Count == 0)
+        {
+            OnSquadEliminated();
+        }
+    }
+
+    /// <summary>
+    /// 新しい班長を自動選出
+    /// </summary>
+    private void SelectNewLeader()
+    {
+        if (_spawnedUnits.Count == 0)
+        {
+            Debug.Log($"{GetSquadName()}: 生存者がいないため班長を選出できません");
+            return;
+        }
+
+        // 生存している最初のユニットを班長に
+        UnitController newLeader = _spawnedUnits[0];
+        SetLeader(newLeader);
+
+        Debug.Log($"{GetSquadName()}: 新しい班長に {newLeader.gameObject.name} を選出");
+    }
+
+    /// <summary>
+    /// 班全滅時の処理
+    /// </summary>
+    private void OnSquadEliminated()
+    {
+        Debug.Log($"{GetSquadName()}: 班が全滅しました");
+
+        // 必要に応じてゲーム全体への通知
+        // GameManager.Instance?.OnSquadEliminated(this);
+    }
+
+    /// <summary>
+    /// 生存者数を取得
+    /// </summary>
+    public int GetAliveCount()
+    {
+        return _spawnedUnits.Count;
+    }
+
+    /// <summary>
+    /// 班が機能しているかチェック
+    /// </summary>
+    public bool IsSquadFunctional()
+    {
+        return _spawnedUnits.Count > 0 && _currentLeader != null;
+    }
     public void ClearSpawnedUnits()
     {
         foreach (var unit in _spawnedUnits)
@@ -274,6 +347,105 @@ public class Squad : MonoBehaviour
     private string GetSquadName()
     {
         return _squadData != null ? _squadData.CompositionName : gameObject.name;
+    }
+
+    /// <summary>
+    /// 班全体を目的地に移動させる
+    /// </summary>
+    public void MoveSquadToDestination()
+    {
+        if (_destinationPoint == null)
+        {
+            Debug.LogWarning($"{GetSquadName()}: 目的地が設定されていません");
+            return;
+        }
+
+        Vector3 destinationPos = _destinationPoint.position;
+        Debug.Log($"{GetSquadName()}: 班全体を目的地へ移動開始 - {destinationPos}");
+
+        // 各班員の目的地を設定
+        for (int i = 0; i < _spawnedUnits.Count; i++)
+        {
+            var unit = _spawnedUnits[i];
+            if (unit == null) continue;
+
+            // 班員ごとに少しずつ位置をずらして設定
+            Vector3 memberDestination = GetMemberDestinationPosition(destinationPos, i);
+
+            // PatrolStateを取得して目的地を設定
+            PatrolState patrolState = unit.GetComponent<PatrolState>();
+            if (patrolState != null)
+            {
+                patrolState.SetDestination(memberDestination);
+                unit.GetStateMachine().ChangeState(AIState.Move);
+            }
+        }
+
+        // イベント通知
+        OnSquadMoved?.Invoke(destinationPos);
+    }
+
+    /// <summary>
+    /// 目的地を設定する
+    /// </summary>
+    public void SetDestination(Transform destination)
+    {
+        _destinationPoint = destination;
+        Debug.Log($"{GetSquadName()}: 目的地設定 - {destination.name}");
+    }
+
+    /// <summary>
+    /// 目的地を座標で設定する
+    /// </summary>
+    public void SetDestination(Vector3 destinationPosition)
+    {
+        // 一時的なGameObjectを作成して座標を設定
+        GameObject tempDestination = new GameObject("TempDestination");
+        tempDestination.transform.position = destinationPosition;
+        _destinationPoint = tempDestination.transform;
+
+        Debug.Log($"{GetSquadName()}: 目的地設定 - {destinationPosition}");
+    }
+
+    /// <summary>
+    /// 班員の個別目的地位置を計算（重ならないように配置）
+    /// </summary>
+    private Vector3 GetMemberDestinationPosition(Vector3 baseDestination, int memberIndex)
+    {
+        if (memberIndex == 0) return baseDestination; // 最初の班員は目的地そのもの
+
+        // 円形に配置
+        float angle = (memberIndex - 1) * (360f / _spawnedUnits.Count) * Mathf.Deg2Rad;
+        float radius = 2f; // 目的地周辺の半径
+
+        Vector3 offset = new Vector3(
+            Mathf.Cos(angle) * radius,
+            0,
+            Mathf.Sin(angle) * radius
+        );
+
+        return baseDestination + offset;
+    }
+
+    /// <summary>
+    /// 班全体の目的地移動をキャンセル
+    /// </summary>
+    public void CancelDestinationMove()
+    {
+        foreach (var unit in _spawnedUnits)
+        {
+            if (unit == null) continue;
+
+            PatrolState patrolState = unit.GetComponent<PatrolState>();
+            if (patrolState != null)
+            {
+                patrolState.ClearDestination();
+            }
+
+            unit.GetStateMachine().ChangeState(AIState.Defend);
+        }
+
+        Debug.Log($"{GetSquadName()}: 目的地移動キャンセル");
     }
 
     // プロパティ
