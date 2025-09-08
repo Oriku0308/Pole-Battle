@@ -8,9 +8,8 @@ public class UnitController : MonoBehaviour
     private AIStateMachine _stateMachine;
     private Renderer _unitRenderer;
 
-    [Header("ランタイム情報")]
-    [SerializeField] private bool _isLeader = false;
-    [SerializeField] private bool _isFollowingLeader = false;
+    private bool _isLeader = false;
+    private bool _isFollowingLeader = false;
 
     private Transform _currentTarget;
     private Squad _mySquad;

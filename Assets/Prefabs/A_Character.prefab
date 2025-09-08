@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 6856645119421944882}
   - component: {fileID: 1818558852486988971}
   - component: {fileID: 5149662237271778397}
+  - component: {fileID: 6427166796416217940}
   m_Layer: 0
   m_Name: A_Character
   m_TagString: Untagged
@@ -147,9 +148,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6502722fbbc372848813fb6724026b30, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _detectionRange: 10
-  _attackRange: 2
-  _hp: 100
+  _isLeader: 0
+  _isFollowingLeader: 0
 --- !u!114 &5149662237271778397
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -162,3 +162,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a9c01a2d3cce514eb8fa85afad94e3a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &6427166796416217940
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6330314473509582142}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 430d7e2a514c86148a10d975f8fc2168, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _attackStartRange: 2
+  _attackChaseRange: 10
+  _attackInterval: 1
+  _attackDamage: 20
+  _normalSpeed: 5
+  _combatSpeed: 3
+  _maxHP: 100
+  _currentHP: 0
+  _isDead: 0
+  _currentTarget: {fileID: 0}
