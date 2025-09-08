@@ -2,49 +2,57 @@
 
 public class PatrolState : AIStateBase
 {
-    [Header("パトロール設定")]
-    [SerializeField] private Transform[] patrolTargets;  // パトロール対象
-
-    private CombatManager combat;
-    private int currentTargetIndex = 0;
-    private Vector3 currentDestination;
-    private float lastEnemyCheckTime = 0f;
+    private CombatManager _combat;
+    private Transform _patrolTarget;  // 単一の目標地点
+    private float _lastEnemyCheckTime = 0f;
     private const float ENEMY_CHECK_INTERVAL = 0.2f;
 
     public PatrolState(UnitController unit) : base(unit)
     {
-        combat = unit.GetComponent<CombatManager>();
-
-        // PatrolTargets コンポーネントから設定を取得
-        PatrolTargets patrolComponent = unit.GetComponent<PatrolTargets>();
-        if (patrolComponent != null)
-        {
-            patrolTargets = patrolComponent.Targets;
-        }
+        _combat = unit.GetComponent<CombatManager>();
     }
 
     public override void Enter()
     {
         Debug.Log($"{unit.gameObject.name}: 遊撃状態開始");
-        unit.SetColor(Color.blue); // 遊撃中は青色
+        unit.SetColor(Color.blue);
 
-        // 通常速度に設定
-        combat?.SetNormalSpeed();
+        _combat?.SetNormalSpeed();
 
-        // 最初のパトロール対象に向かう
-        SetNextPatrolDestination();
-        lastEnemyCheckTime = 0f;
+        // Squadから遊撃対象を取得
+        Squad squad = unit.MySquad;
+
+        if (squad != null && squad.PatrolTargets != null && squad.PatrolTargets.Length > 0)
+        {
+            // 最初の目標を遊撃対象として設定
+            _patrolTarget = squad.PatrolTargets[0];
+        }
+
+        if (_patrolTarget != null)
+        {
+            // 目標地点にまっすぐ向かう
+            unit.MoveTo(_patrolTarget.position);
+            Debug.Log($"{unit.gameObject.name}: 遊撃対象に向かう - {_patrolTarget.name}");
+        }
+        else
+        {
+            Debug.LogWarning($"{unit.gameObject.name}: 遊撃対象が設定されていません、防衛モードに移行");
+            unit.GetStateMachine().ChangeState(AIState.Defend);
+            return;
+        }
+
+        _lastEnemyCheckTime = 0f;
     }
 
     public override void Update()
     {
-        if (combat == null || combat.IsDead) return;
+        if (_combat == null || _combat.IsDead) return;
 
         // 敵検出（最優先）
         CheckForEnemies();
 
-        // パトロール移動処理
-        UpdatePatrolMovement();
+        // 目標地点への移動確認
+        CheckPatrolMovement();
     }
 
     public override void Exit()
@@ -57,132 +65,75 @@ public class PatrolState : AIStateBase
     /// </summary>
     private void CheckForEnemies()
     {
-        if (Time.time - lastEnemyCheckTime > ENEMY_CHECK_INTERVAL)
+        if (Time.time - _lastEnemyCheckTime > ENEMY_CHECK_INTERVAL)
         {
-            // 攻撃可能範囲内の敵を検索（遊撃モードは広範囲で検索）
-            Transform enemy = combat.FindEnemyInChaseRange();
+            // 攻撃可能範囲内の敵を検索
+            Transform enemy = _combat.FindEnemyInChaseRange();
 
             if (enemy != null)
             {
                 Debug.Log($"{unit.gameObject.name}: 遊撃中に敵発見！ - {enemy.name}");
 
                 // ターゲットを設定
-                combat.CurrentTarget = enemy;
+                _combat.CurrentTarget = enemy;
 
                 // 攻撃状態に移行
                 unit.GetStateMachine().ChangeState(AIState.Attack);
                 return;
             }
 
-            lastEnemyCheckTime = Time.time;
+            _lastEnemyCheckTime = Time.time;
         }
     }
 
     /// <summary>
-    /// パトロール移動更新
+    /// 遊撃移動の確認
     /// </summary>
-    private void UpdatePatrolMovement()
+    private void CheckPatrolMovement()
     {
-        // 移動が完了しているかチェック
-        if (!unit.IsMoving())
+        if (_patrolTarget == null)
         {
-            // 目標に到達
-            HandleDestinationReached();
-        }
-    }
-
-    /// <summary>
-    /// 目標到達時の処理
-    /// </summary>
-    private void HandleDestinationReached()
-    {
-        if (patrolTargets == null || patrolTargets.Length == 0)
-        {
-            // パトロール対象がない場合は防衛モードに移行
-            Debug.Log($"{unit.gameObject.name}: パトロール対象なし、防衛モードに移行");
+            Debug.LogWarning($"{unit.gameObject.name}: 遊撃対象を見失いました、防衛モードに移行");
             unit.GetStateMachine().ChangeState(AIState.Defend);
             return;
         }
 
-        // 現在の目標が最終目標の場合
-        if (IsAtFinalDestination())
+        // 移動が完了しているかチェック
+        if (!unit.IsMoving())
         {
-            Debug.Log($"{unit.gameObject.name}: パトロール完了、防衛モードに移行");
+            // 目標地点に到達
+            Debug.Log($"{unit.gameObject.name}: 遊撃対象に到達、防衛モードに移行");
             unit.GetStateMachine().ChangeState(AIState.Defend);
         }
-        else
-        {
-            // 次の目標に向かう
-            SetNextPatrolDestination();
-        }
     }
 
     /// <summary>
-    /// 次のパトロール目標を設定
+    /// 外部から遊撃対象を設定
     /// </summary>
-    private void SetNextPatrolDestination()
+    public void SetPatrolTarget(Transform target)
     {
-        if (patrolTargets == null || patrolTargets.Length == 0) return;
-
-        // 現在のインデックスの目標を取得
-        Transform target = patrolTargets[currentTargetIndex];
-
+        _patrolTarget = target;
         if (target != null)
         {
-            currentDestination = target.position;
-            unit.MoveTo(currentDestination);
+            Debug.Log($"{unit.gameObject.name}: 遊撃対象を設定 - {target.name}");
+        }
+    }
 
-            Debug.Log($"{unit.gameObject.name}: パトロール目標{currentTargetIndex}に向かう - {target.name}");
+    /// <summary>
+    /// 遊撃を再開（攻撃モードから復帰時）
+    /// </summary>
+    public void ResumePatrol()
+    {
+        if (_patrolTarget != null)
+        {
+            // 目標地点への移動を再開
+            unit.MoveTo(_patrolTarget.position);
+            Debug.Log($"{unit.gameObject.name}: 遊撃再開 - {_patrolTarget.name}");
         }
         else
         {
-            Debug.LogWarning($"{unit.gameObject.name}: パトロール目標{currentTargetIndex}がnullです");
-            // 次の目標に進む
-            currentTargetIndex++;
+            // 目標がない場合は防衛モードに移行
+            unit.GetStateMachine().ChangeState(AIState.Defend);
         }
-    }
-
-    /// <summary>
-    /// 最終目標に到達したかチェック
-    /// </summary>
-    private bool IsAtFinalDestination()
-    {
-        if (patrolTargets == null || patrolTargets.Length == 0) return true;
-
-        // 最後の目標に到達したか
-        if (currentTargetIndex >= patrolTargets.Length - 1)
-        {
-            return true;
-        }
-
-        // 次の目標に進む
-        currentTargetIndex++;
-        return false;
-    }
-
-    /// <summary>
-    /// パトロール対象を外部から設定
-    /// </summary>
-    public void SetPatrolTargets(Transform[] targets)
-    {
-        patrolTargets = targets;
-        currentTargetIndex = 0;
-    }
-}
-
-/// <summary>
-/// パトロール対象を設定するためのコンポーネント
-/// </summary>
-[System.Serializable]
-public class PatrolTargets : MonoBehaviour
-{
-    [Header("パトロール対象")]
-    [SerializeField] private Transform[] _targets;
-
-    public Transform[] Targets => _targets;
-
-    public void SetTargets(Transform[] targets)
-    {
-        _targets = targets;
     }
 }

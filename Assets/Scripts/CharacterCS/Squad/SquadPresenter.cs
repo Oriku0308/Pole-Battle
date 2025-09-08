@@ -23,9 +23,13 @@ public class SquadPresenter : MonoBehaviour
             _squadModel = GetComponent<Squad>();
         }
 
-        // イベント購読
+        // マウス入力イベント購読
         _inputHandler.OnUnitSelected += HandleUnitSelection;
         _inputHandler.OnMoveCommand += HandleMoveCommand;
+
+        // キーボード入力イベント購読
+        _inputHandler.OnPatrolModeCommand += HandlePatrolCommand;
+        _inputHandler.OnDefendModeCommand += HandleDefendCommand;
 
         Debug.Log($"SquadPresenter: 初期化完了 - {gameObject.name}");
     }
@@ -37,6 +41,8 @@ public class SquadPresenter : MonoBehaviour
         {
             _inputHandler.OnUnitSelected -= HandleUnitSelection;
             _inputHandler.OnMoveCommand -= HandleMoveCommand;
+            _inputHandler.OnPatrolModeCommand -= HandlePatrolCommand;
+            _inputHandler.OnDefendModeCommand -= HandleDefendCommand;
         }
     }
 
@@ -52,6 +58,9 @@ public class SquadPresenter : MonoBehaviour
 
             // InputHandlerに選択状態を通知
             _inputHandler.SetSelectedLeader(selectedUnit);
+
+            // 選択したユニットの情報をデバッグ表示
+            DisplayUnitInfo(selectedUnit);
         }
         else
         {
@@ -71,6 +80,103 @@ public class SquadPresenter : MonoBehaviour
             // Model（Squad）に移動指示
             _squadModel.MoveLeaderTo(targetPosition);
         }
+    }
+
+    private void HandlePatrolCommand()
+    {
+        UnitController selectedLeader = _inputHandler.GetSelectedLeader();
+
+        // 選択されたリーダーがこの班のメンバーかチェック
+        if (selectedLeader != null && _squadModel.IsMember(selectedLeader) && selectedLeader.IsLeader)
+        {
+            Debug.Log($"SquadPresenter: 遊撃モード指示 - {selectedLeader.gameObject.name}");
+
+            // Squad単位で遊撃モード開始
+            _squadModel.StartPatrolMode();
+        }
+        else
+        {
+            Debug.Log($"SquadPresenter: 遊撃指示無効 - 班長が選択されていません");
+        }
+    }
+
+    private void HandleDefendCommand()
+    {
+        UnitController selectedLeader = _inputHandler.GetSelectedLeader();
+
+        // 選択されたリーダーがこの班のメンバーかチェック
+        if (selectedLeader != null && _squadModel.IsMember(selectedLeader) && selectedLeader.IsLeader)
+        {
+            Debug.Log($"SquadPresenter: 防衛モード指示 - {selectedLeader.gameObject.name}");
+
+            // Squad単位で防衛モード開始
+            _squadModel.StartDefendMode();
+        }
+        else
+        {
+            Debug.Log($"SquadPresenter: 防衛指示無効 - 班長が選択されていません");
+        }
+    }
+
+    private void DisplayUnitInfo(UnitController unit)
+    {
+        CombatManager combat = unit.GetComponent<CombatManager>();
+        if (combat != null)
+        {
+            Debug.Log($"ユニット情報 - {unit.gameObject.name}: HP:{combat.CurrentHP}/{combat.MaxHP}, 状態:{unit.GetStateMachine().GetCurrentState()}");
+        }
+    }
+
+    // 外部から状態変更（UI用）
+    public void OnPatrolButtonClick()
+    {
+        HandlePatrolCommand();
+    }
+
+    public void OnDefendButtonClick()
+    {
+        HandleDefendCommand();
+    }
+
+    // 統計情報取得
+    public int GetAliveUnitCount()
+    {
+        int count = 0;
+        foreach (var unit in _squadModel.SpawnedUnits)
+        {
+            if (unit != null)
+            {
+                CombatManager combat = unit.GetComponent<CombatManager>();
+                if (combat != null && !combat.IsDead)
+                {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    public float GetSquadAverageHP()
+    {
+        float totalHP = 0f;
+        float totalMaxHP = 0f;
+        int aliveCount = 0;
+
+        foreach (var unit in _squadModel.SpawnedUnits)
+        {
+            if (unit != null)
+            {
+                CombatManager combat = unit.GetComponent<CombatManager>();
+                if (combat != null && !combat.IsDead)
+                {
+                    totalHP += combat.CurrentHP;
+                    totalMaxHP += combat.MaxHP;
+                    aliveCount++;
+                }
+            }
+        }
+
+        return aliveCount > 0 ? (totalHP / totalMaxHP) : 0f;
     }
 
     // プロパティ

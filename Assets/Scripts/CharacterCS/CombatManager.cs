@@ -1,28 +1,29 @@
 ﻿using UnityEngine;
 
 /// <summary>
-/// 攻撃と敵検出の基本機能を提供するコンポーネント
+/// 攻撃と敵検出の基本機能（モック用簡素版）
 /// </summary>
 public class CombatManager : MonoBehaviour
 {
     [Header("攻撃設定")]
-    [SerializeField] private float _attackStartRange = 2f;      // 攻撃開始範囲（狭い方）
-    [SerializeField] private float _attackChaseRange = 10f;     // 攻撃可能範囲（広い方）
-    [SerializeField] private float _attackInterval = 1f;       // 攻撃間隔
-    [SerializeField] private float _attackDamage = 20f;        // 攻撃力
+    [SerializeField] private float _attackStartRange = 2f;
+    [SerializeField] private float _attackChaseRange = 10f;
+    [SerializeField] private float _attackInterval = 1f;
+    [SerializeField] private float _attackDamage = 20f;
 
     [Header("移動設定")]
-    [SerializeField] private float _normalSpeed = 5f;          // 通常移動速度
-    [SerializeField] private float _combatSpeed = 3f;          // 戦闘時移動速度
+    [SerializeField] private float _normalSpeed = 5f;
+    [SerializeField] private float _combatSpeed = 3f;
 
     [Header("HP設定")]
-    [SerializeField] private float _maxHP = 100f;              // 最大HP
-    [SerializeField] private float _currentHP;                // 現在HP
+    [SerializeField] private float _maxHP = 100f;
 
+    // ランタイム情報
+    private float _currentHP;
     private bool _isDead = false;
-    private Transform _currentTarget;        // 現在のターゲット
-
+    private Transform _currentTarget;
     private float _lastAttackTime = 0f;
+
     private UnitController _unitController;
     private UnityEngine.AI.NavMeshAgent _agent;
 
@@ -36,6 +37,39 @@ public class CombatManager : MonoBehaviour
         {
             _agent.speed = _normalSpeed;
         }
+    }
+
+    /// <summary>
+    /// 初期状態にリセット（モック用）
+    /// </summary>
+    public void ResetToInitialState()
+    {
+        _currentHP = _maxHP;
+        _isDead = false;
+        _currentTarget = null;
+        _lastAttackTime = 0f;
+
+        if (_agent != null)
+        {
+            _agent.speed = _normalSpeed;
+            _agent.enabled = true;
+        }
+
+        // コライダー有効化
+        Collider collider = GetComponent<Collider>();
+        if (collider != null)
+        {
+            collider.enabled = true;
+        }
+
+        // 色をリセット
+        Renderer renderer = GetComponent<Renderer>();
+        if (renderer != null)
+        {
+            renderer.material.color = Color.white; // デフォルト色
+        }
+
+        Debug.Log($"{gameObject.name}: CombatManager初期状態リセット");
     }
 
     /// <summary>
@@ -89,37 +123,30 @@ public class CombatManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 敵かどうかの判定（簡易版）
+    /// 敵判定（親が違えば敵）
     /// </summary>
     private bool IsEnemy(UnitController otherUnit)
     {
         if (_unitController == null) return false;
-
-        // 簡易判定：親オブジェクト（Squad）が異なれば敵
-        Transform mySquad = _unitController.transform.parent;
-        Transform otherSquad = otherUnit.transform.parent;
-
-        return mySquad != otherSquad;
+        return _unitController.transform.parent != otherUnit.transform.parent;
     }
 
     /// <summary>
-    /// ターゲットが攻撃開始範囲内にいるかチェック
+    /// 攻撃開始範囲内かチェック
     /// </summary>
     public bool IsTargetInAttackStartRange(Transform target)
     {
         if (target == null) return false;
-        float distance = Vector3.Distance(transform.position, target.position);
-        return distance <= _attackStartRange;
+        return Vector3.Distance(transform.position, target.position) <= _attackStartRange;
     }
 
     /// <summary>
-    /// ターゲットが攻撃可能範囲内にいるかチェック
+    /// 攻撃可能範囲内かチェック
     /// </summary>
     public bool IsTargetInChaseRange(Transform target)
     {
         if (target == null) return false;
-        float distance = Vector3.Distance(transform.position, target.position);
-        return distance <= _attackChaseRange;
+        return Vector3.Distance(transform.position, target.position) <= _attackChaseRange;
     }
 
     /// <summary>
@@ -131,15 +158,11 @@ public class CombatManager : MonoBehaviour
 
         _lastAttackTime = Time.time;
 
-        // ダメージ処理
         CombatManager targetCombat = target.GetComponent<CombatManager>();
         if (targetCombat != null)
         {
             targetCombat.TakeDamage(_attackDamage);
         }
-
-        // 攻撃エフェクト
-        StartCoroutine(AttackFlashEffect());
 
         Debug.Log($"{gameObject.name}: {target.name}を攻撃！");
         return true;
@@ -165,9 +188,7 @@ public class CombatManager : MonoBehaviour
         _currentHP -= damage;
         _currentHP = Mathf.Max(0, _currentHP);
 
-        StartCoroutine(DamageFlashEffect());
-
-        Debug.Log($"{gameObject.name}: {damage}ダメージ受ける (HP: {_currentHP}/{_maxHP})");
+        Debug.Log($"{gameObject.name}: {damage}ダメージ (HP: {_currentHP}/{_maxHP})");
 
         if (_currentHP <= 0)
         {
@@ -180,10 +201,7 @@ public class CombatManager : MonoBehaviour
     /// </summary>
     public void SetCombatSpeed()
     {
-        if (_agent != null)
-        {
-            _agent.speed = _combatSpeed;
-        }
+        if (_agent != null) _agent.speed = _combatSpeed;
     }
 
     /// <summary>
@@ -191,10 +209,7 @@ public class CombatManager : MonoBehaviour
     /// </summary>
     public void SetNormalSpeed()
     {
-        if (_agent != null)
-        {
-            _agent.speed = _normalSpeed;
-        }
+        if (_agent != null) _agent.speed = _normalSpeed;
     }
 
     /// <summary>
@@ -217,44 +232,11 @@ public class CombatManager : MonoBehaviour
         Destroy(gameObject, 3f);
     }
 
-    /// <summary>
-    /// 攻撃エフェクト
-    /// </summary>
-    private System.Collections.IEnumerator AttackFlashEffect()
-    {
-        Renderer renderer = GetComponent<Renderer>();
-        if (renderer != null)
-        {
-            Color originalColor = renderer.material.color;
-            renderer.material.color = Color.white;
-            yield return new WaitForSeconds(0.1f);
-            renderer.material.color = originalColor;
-        }
-    }
-
-    /// <summary>
-    /// ダメージエフェクト
-    /// </summary>
-    private System.Collections.IEnumerator DamageFlashEffect()
-    {
-        Renderer renderer = GetComponent<Renderer>();
-        if (renderer != null)
-        {
-            Color originalColor = renderer.material.color;
-            renderer.material.color = Color.red;
-            yield return new WaitForSeconds(0.1f);
-            renderer.material.color = originalColor;
-        }
-    }
-
     // ギズモ表示
     void OnDrawGizmosSelected()
     {
-        // 攻撃開始範囲（赤）
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, _attackStartRange);
-
-        // 攻撃可能範囲（黄）
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, _attackChaseRange);
     }

@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using UnityEngine.AI;
-using System;
 
 public class UnitController : MonoBehaviour
 {
@@ -8,8 +7,9 @@ public class UnitController : MonoBehaviour
     private AIStateMachine _stateMachine;
     private Renderer _unitRenderer;
 
-    private bool _isLeader = false;
-    private bool _isFollowingLeader = false;
+    [Header("ランタイム情報")]
+    [SerializeField] private bool _isLeader = false;
+    [SerializeField] private bool _isFollowingLeader = false;
 
     private Transform _currentTarget;
     private Squad _mySquad;
@@ -34,6 +34,36 @@ public class UnitController : MonoBehaviour
         _stateMachine = GetComponent<AIStateMachine>();
     }
 
+    /// <summary>
+    /// 初期状態にリセット（モック用）
+    /// </summary>
+    public void ResetToInitialState()
+    {
+        _isLeader = false;
+        _isFollowingLeader = false;
+        _currentTarget = null;
+
+        // 移動停止
+        StopMoving();
+
+        // スケールと色をリセット
+        transform.localScale = Vector3.one;
+        if (_unitRenderer != null)
+        {
+            _unitRenderer.material.color = _originalColor;
+        }
+
+        // NavMeshAgentをリセット
+        if (_agent != null)
+        {
+            _agent.enabled = true;
+            _agent.isStopped = false;
+            _agent.speed = 5f;
+        }
+
+        Debug.Log($"{gameObject.name}: 初期状態にリセット");
+    }
+
     // --- 公開メソッド（Squadから呼ばれる） ---
 
     public void StartFollowingLeader()
@@ -45,12 +75,10 @@ public class UnitController : MonoBehaviour
     public void StopFollowing()
     {
         _isFollowingLeader = false;
-
         if (_stateMachine != null && _stateMachine.GetCurrentState() != AIState.Defend)
         {
             _stateMachine.ChangeState(AIState.Defend);
         }
-
         Debug.Log($"{gameObject.name}: 追従停止 - 防衛状態へ");
     }
 
@@ -63,7 +91,6 @@ public class UnitController : MonoBehaviour
     public void SetAsLeader(bool leader)
     {
         _isLeader = leader;
-
         if (leader)
         {
             _isFollowingLeader = false;
@@ -72,13 +99,11 @@ public class UnitController : MonoBehaviour
             {
                 _unitRenderer.material.color = Color.yellow;
             }
-
             if (_agent != null)
             {
                 _agent.ResetPath();
                 _agent.isStopped = false;
             }
-
             Debug.Log($"{gameObject.name}: 班長に設定");
         }
         else
@@ -113,7 +138,6 @@ public class UnitController : MonoBehaviour
         {
             _agent.isStopped = false;
             _agent.ResetPath();
-
             bool success = _agent.SetDestination(position);
             if (!success)
             {
@@ -132,7 +156,7 @@ public class UnitController : MonoBehaviour
 
     public Transform FindNearestEnemy()
     {
-        return null;
+        return null; // モック用：CombatManagerに委譲
     }
 
     public void SetTarget(Transform target)
@@ -140,9 +164,15 @@ public class UnitController : MonoBehaviour
         _currentTarget = target;
     }
 
+    public Transform GetCurrentTarget()
+    {
+        return _currentTarget;
+    }
+
     // プロパティ
     public AIStateMachine GetStateMachine() => _stateMachine;
     public bool IsLeader => _isLeader;
     public bool IsFollowingLeader => _isFollowingLeader;
     public Vector3 Position => transform.position;
+    public Squad MySquad => _mySquad;
 }
