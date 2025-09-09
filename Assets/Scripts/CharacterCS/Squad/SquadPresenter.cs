@@ -4,7 +4,7 @@ public class SquadPresenter : MonoBehaviour
 {
     [Header("MVP Components")]
     [SerializeField] private InputHandler _inputHandler;
-    [SerializeField] private Squad _squadModel;
+    [SerializeField] private SquadManager _squadModel;
 
     void Start()
     {
@@ -20,7 +20,7 @@ public class SquadPresenter : MonoBehaviour
 
         if (_squadModel == null)
         {
-            _squadModel = GetComponent<Squad>();
+            _squadModel = GetComponent<SquadManager>();
         }
 
         // イベント購読
@@ -72,8 +72,4 @@ public class SquadPresenter : MonoBehaviour
             _squadModel.MoveLeaderTo(targetPosition);
         }
     }
-
-    // プロパティ
-    public Squad SquadModel => _squadModel;
-    public InputHandler InputHandler => _inputHandler;
 }

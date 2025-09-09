@@ -1,21 +1,27 @@
 ﻿using UnityEngine;
 using System;
 
+/// <summary>
+/// プレイヤーの入力を受け取り、適切なコマンドに変換する入力管理クラス
+/// マウス操作とキーボード操作を統合管理
+/// </summary>
 public class InputHandler : MonoBehaviour
 {
     [Header("入力設定")]
-    [SerializeField] private Camera _mainCamera;
-    [SerializeField] private LayerMask _selectableLayerMask = -1;
+    [SerializeField] private Camera _mainCamera;                    // メインカメラ
+    [SerializeField] private LayerMask _selectableLayerMask = -1;   // 選択可能オブジェクトのレイヤー
 
-    public Action<UnitController> OnUnitSelected;
-    public Action<Vector3> OnMoveCommand;
-    public Action OnPatrolCommand;      // パトロール開始コマンド
-    public Action OnDefendCommand;      // 防衛開始コマンド
+    // イベント通知用デリゲート
+    public Action<UnitController> OnUnitSelected;   // ユニット選択時
+    public Action<Vector3> OnMoveCommand;           // 移動指示時
+    public Action OnPatrolCommand;                  // パトロール開始コマンド
+    public Action OnDefendCommand;                  // 防衛開始コマンド
 
-    private UnitController _selectedLeader;
+    private UnitController _selectedLeader;         // 現在選択中のリーダー
 
     private void Start()
     {
+        // メインカメラが未設定の場合、自動で取得
         if (_mainCamera == null)
         {
             _mainCamera = Camera.main;
@@ -24,13 +30,17 @@ public class InputHandler : MonoBehaviour
 
     private void Update()
     {
-        HandleMouseInput();
-        HandleKeyboardInput();  // キーボード入力処理を追加
+        // 入力処理を毎フレーム実行
+        HandleMouseInput();     // マウス入力
+        HandleKeyboardInput();  // キーボード入力
     }
 
+    /// <summary>
+    /// マウス入力の処理
+    /// </summary>
     private void HandleMouseInput()
     {
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0)) // 左クリック
         {
             ProcessMouseClick();
         }
@@ -56,6 +66,7 @@ public class InputHandler : MonoBehaviour
 
     /// <summary>
     /// パトロールコマンド処理
+    /// 選択中のリーダーの班全体をパトロール状態に
     /// </summary>
     private void HandlePatrolCommand()
     {
@@ -64,7 +75,7 @@ public class InputHandler : MonoBehaviour
             Debug.Log($"InputHandler: パトロール指示 - {_selectedLeader.gameObject.name}");
 
             // 選択されたリーダーの班をパトロール状態に
-            Squad squad = _selectedLeader.transform.parent?.GetComponent<Squad>();
+            SquadManager squad = _selectedLeader.transform.parent?.GetComponent<SquadManager>();
             if (squad != null)
             {
                 SetSquadToPatrolState(squad);
@@ -85,6 +96,7 @@ public class InputHandler : MonoBehaviour
 
     /// <summary>
     /// 防衛コマンド処理
+    /// 選択中のリーダーの班全体を防衛状態に
     /// </summary>
     private void HandleDefendCommand()
     {
@@ -93,7 +105,7 @@ public class InputHandler : MonoBehaviour
             Debug.Log($"InputHandler: 防衛指示 - {_selectedLeader.gameObject.name}");
 
             // 選択されたリーダーの班を防衛状態に
-            Squad squad = _selectedLeader.transform.parent?.GetComponent<Squad>();
+            SquadManager squad = _selectedLeader.transform.parent?.GetComponent<SquadManager>();
             if (squad != null)
             {
                 SetSquadToDefendState(squad);
@@ -115,7 +127,7 @@ public class InputHandler : MonoBehaviour
     /// <summary>
     /// 班全体をパトロール状態に設定
     /// </summary>
-    private void SetSquadToPatrolState(Squad squad)
+    private void SetSquadToPatrolState(SquadManager squad)
     {
         foreach (var unit in squad.SpawnedUnits)
         {
@@ -130,7 +142,7 @@ public class InputHandler : MonoBehaviour
     /// <summary>
     /// 班全体を防衛状態に設定
     /// </summary>
-    private void SetSquadToDefendState(Squad squad)
+    private void SetSquadToDefendState(SquadManager squad)
     {
         foreach (var unit in squad.SpawnedUnits)
         {
@@ -142,6 +154,10 @@ public class InputHandler : MonoBehaviour
         Debug.Log($"{squad.name}: 班全体を防衛状態に設定");
     }
 
+    /// <summary>
+    /// マウスクリックの処理
+    /// ユニット選択または移動指示を判定
+    /// </summary>
     private void ProcessMouseClick()
     {
         Ray ray = _mainCamera.ScreenPointToRay(Input.mousePosition);
@@ -163,6 +179,9 @@ public class InputHandler : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// ユニット選択処理
+    /// </summary>
     private void HandleUnitSelection(UnitController unit)
     {
         Debug.Log($"InputHandler: ユニット選択 - {unit.gameObject.name}");
@@ -171,6 +190,9 @@ public class InputHandler : MonoBehaviour
         OnUnitSelected?.Invoke(unit);
     }
 
+    /// <summary>
+    /// 移動指示処理
+    /// </summary>
     private void HandleMoveCommand(Vector3 position)
     {
         if (_selectedLeader != null)
@@ -184,11 +206,18 @@ public class InputHandler : MonoBehaviour
         }
     }
 
-    // 外部からの選択状態設定
+    // --- 外部インターフェース ---
+
+    /// <summary>
+    /// 外部からの選択状態設定
+    /// </summary>
     public void SetSelectedLeader(UnitController leader)
     {
         _selectedLeader = leader;
     }
 
+    /// <summary>
+    /// 現在選択中のリーダーを取得
+    /// </summary>
     public UnitController GetSelectedLeader() => _selectedLeader;
 }

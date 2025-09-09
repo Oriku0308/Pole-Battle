@@ -6,13 +6,13 @@
 public class PatrolState : AIStateBase
 {
     [Header("移動設定")]
-    [SerializeField] private float _arrivalThreshold = 1f;  // 到着判定の距離
+    [SerializeField] private float _arrivalThreshold = 1f; // 到着判定の距離
 
     private CombatManager _combatManager;
 
-    private Vector3 _targetDestination;                     // 目的地の座標
-    private bool _hasDestination = false;                   // 目的地が設定されているか
-    private bool _isMovingToDestination = false;            // 目的地に向かって移動中かどうか
+    private Vector3 _targetDestination; // 目的地の座標
+    private bool _hasDestination = false; // 目的地が設定されているか
+    private bool _isMovingToDestination = false; // 目的地に向かって移動中かどうか
     private float _lastEnemyCheckTime = 0f;
     private const float ENEMY_CHECK_INTERVAL = 0.2f;
 

@@ -2,41 +2,48 @@
 
 /// <summary>
 /// 攻撃と敵検出の基本機能を提供するコンポーネント
+/// ユニットの戦闘に関するすべての処理を管理
 /// </summary>
 public class CombatManager : MonoBehaviour
 {
     [Header("攻撃設定")]
-    [SerializeField] private float _attackStartRange = 2f;      // 攻撃開始範囲（狭い方）
-    [SerializeField] private float _attackChaseRange = 10f;     // 攻撃可能範囲（広い方）
-    [SerializeField] private float _attackInterval = 1f;       // 攻撃間隔
-    [SerializeField] private float _attackDamage = 20f;        // 攻撃力
+    [SerializeField] private float _attackStartRange = 2f;  // 攻撃開始範囲（狭い方）
+    [SerializeField] private float _attackChaseRange = 10f; // 攻撃可能範囲（広い方）
+    [SerializeField] private float _attackInterval = 1f;    // 攻撃間隔
+    [SerializeField] private float _attackDamage = 20f;     // 攻撃力
 
     [Header("移動設定")]
-    [SerializeField] private float _normalSpeed = 5f;          // 通常移動速度
-    [SerializeField] private float _combatSpeed = 3f;          // 戦闘時移動速度
+    [SerializeField] private float _normalSpeed = 5f;       // 通常移動速度
+    [SerializeField] private float _combatSpeed = 3f;       // 戦闘時移動速度
 
     [Header("HP設定")]
-    [SerializeField] private float _maxHP = 100f;              // 最大HP
-    [SerializeField] private float _currentHP;                // 現在HP
+    [SerializeField] private float _maxHP = 100f;           // 最大HP
+    [SerializeField] private float _currentHP;              // 現在HP
 
-    private bool _isDead = false;
-    private Transform _currentTarget;        // 現在のターゲット
+    // 内部状態
+    private bool _isDead = false;                           // 死亡フラグ
+    private Transform _currentTarget;                       // 現在のターゲット
+    private float _lastAttackTime = 0f;                     // 最後の攻撃時刻
 
-    private float _lastAttackTime = 0f;
+    // コンポーネント参照
     private UnitController _unitController;
     private UnityEngine.AI.NavMeshAgent _agent;
 
     void Awake()
     {
+        // コンポーネント取得と初期化
         _unitController = GetComponent<UnitController>();
         _agent = GetComponent<UnityEngine.AI.NavMeshAgent>();
         _currentHP = _maxHP;
 
+        // 移動速度を通常速度に設定
         if (_agent != null)
         {
             _agent.speed = _normalSpeed;
         }
     }
+
+    // --- 敵検出システム ---
 
     /// <summary>
     /// 攻撃開始範囲内の敵を検出
@@ -44,15 +51,7 @@ public class CombatManager : MonoBehaviour
     public Transform FindEnemyInAttackStartRange()
     {
         return FindNearestEnemyInRange(_attackStartRange);
-    }
-
-    /// <summary>
-    /// 攻撃可能範囲内の敵を検出
-    /// </summary>
-    public Transform FindEnemyInChaseRange()
-    {
-        return FindNearestEnemyInRange(_attackChaseRange);
-    }
+    } 
 
     /// <summary>
     /// 指定範囲内の最も近い敵を検索
@@ -65,9 +64,10 @@ public class CombatManager : MonoBehaviour
         Transform nearestEnemy = null;
         float nearestDistance = float.MaxValue;
 
+        // 範囲内のすべてのコライダーをチェック
         foreach (var collider in nearbyColliders)
         {
-            if (collider.transform == transform) continue;
+            if (collider.transform == transform) continue; // 自分自身は除外
 
             UnitController otherUnit = collider.GetComponent<UnitController>();
             if (otherUnit != null && IsEnemy(otherUnit))
@@ -102,24 +102,17 @@ public class CombatManager : MonoBehaviour
         return mySquad != otherSquad;
     }
 
+    // --- 攻撃システム ---
+
     /// <summary>
     /// ターゲットが攻撃開始範囲内にいるかチェック
     /// </summary>
     public bool IsTargetInAttackStartRange(Transform target)
     {
         if (target == null) return false;
+
         float distance = Vector3.Distance(transform.position, target.position);
         return distance <= _attackStartRange;
-    }
-
-    /// <summary>
-    /// ターゲットが攻撃可能範囲内にいるかチェック
-    /// </summary>
-    public bool IsTargetInChaseRange(Transform target)
-    {
-        if (target == null) return false;
-        float distance = Vector3.Distance(transform.position, target.position);
-        return distance <= _attackChaseRange;
     }
 
     /// <summary>
@@ -138,9 +131,6 @@ public class CombatManager : MonoBehaviour
             targetCombat.TakeDamage(_attackDamage);
         }
 
-        // 攻撃エフェクト
-        StartCoroutine(AttackFlashEffect());
-
         Debug.Log($"{gameObject.name}: {target.name}を攻撃！");
         return true;
     }
@@ -151,9 +141,12 @@ public class CombatManager : MonoBehaviour
     private bool CanAttack(Transform target)
     {
         if (_isDead || target == null) return false;
-        if (Time.time - _lastAttackTime < _attackInterval) return false;
+        if (Time.time - _lastAttackTime < _attackInterval) return false; // クールダウン中
+
         return IsTargetInAttackStartRange(target);
     }
+
+    // --- ダメージ・HP管理 ---
 
     /// <summary>
     /// ダメージを受ける
@@ -163,12 +156,11 @@ public class CombatManager : MonoBehaviour
         if (_isDead) return;
 
         _currentHP -= damage;
-        _currentHP = Mathf.Max(0, _currentHP);
-
-        StartCoroutine(DamageFlashEffect());
+        _currentHP = Mathf.Max(0, _currentHP); // 0以下にならないよう制限
 
         Debug.Log($"{gameObject.name}: {damage}ダメージ受ける (HP: {_currentHP}/{_maxHP})");
 
+        // HP0なら死亡処理
         if (_currentHP <= 0)
         {
             Die();
@@ -176,7 +168,35 @@ public class CombatManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 戦闘速度に変更
+    /// 死亡処理
+    /// </summary>
+    private void Die()
+    {
+        _isDead = true;
+
+        // 班に死亡を通知
+        if (_unitController != null)
+        {
+            SquadManager squad = _unitController.transform.parent?.GetComponent<SquadManager>();
+            squad?.OnUnitDied(_unitController);
+
+            // 移動とAIを停止
+            _unitController.StopMoving();
+            _unitController.GetStateMachine().enabled = false;
+        }
+
+        // 見た目を変更
+        GetComponent<Renderer>().material.color = Color.gray;
+        GetComponent<Collider>().enabled = false;
+
+        Debug.Log($"{gameObject.name}: 死亡");
+        Destroy(gameObject, 3f); // 3秒後に削除
+    }
+
+    // --- 速度制御 ---
+
+    /// <summary>
+    /// 戦闘速度に変更（攻撃時の速度低下）
     /// </summary>
     public void SetCombatSpeed()
     {
@@ -197,77 +217,9 @@ public class CombatManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 死亡処理
-    /// </summary>
-    private void Die()
-    {
-        _isDead = true;
-
-        // 班に死亡を通知
-        if (_unitController != null)
-        {
-            Squad squad = _unitController.transform.parent?.GetComponent<Squad>();
-            squad?.OnUnitDied(_unitController);
-
-            _unitController.StopMoving();
-            _unitController.GetStateMachine().enabled = false;
-        }
-
-        GetComponent<Renderer>().material.color = Color.gray;
-        GetComponent<Collider>().enabled = false;
-
-        Debug.Log($"{gameObject.name}: 死亡");
-        Destroy(gameObject, 3f);
-    }
-
-    /// <summary>
-    /// 攻撃エフェクト
-    /// </summary>
-    private System.Collections.IEnumerator AttackFlashEffect()
-    {
-        Renderer renderer = GetComponent<Renderer>();
-        if (renderer != null)
-        {
-            Color originalColor = renderer.material.color;
-            renderer.material.color = Color.white;
-            yield return new WaitForSeconds(0.1f);
-            renderer.material.color = originalColor;
-        }
-    }
-
-    /// <summary>
-    /// ダメージエフェクト
-    /// </summary>
-    private System.Collections.IEnumerator DamageFlashEffect()
-    {
-        Renderer renderer = GetComponent<Renderer>();
-        if (renderer != null)
-        {
-            Color originalColor = renderer.material.color;
-            renderer.material.color = Color.red;
-            yield return new WaitForSeconds(0.1f);
-            renderer.material.color = originalColor;
-        }
-    }
-
-    // ギズモ表示
-    void OnDrawGizmosSelected()
-    {
-        // 攻撃開始範囲（赤）
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, _attackStartRange);
-
-        // 攻撃可能範囲（黄）
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, _attackChaseRange);
-    }
-
-    // プロパティ
+    // --- プロパティ ---
     public Transform CurrentTarget { get => _currentTarget; set => _currentTarget = value; }
     public bool IsDead => _isDead;
-    public float CurrentHP => _currentHP;
-    public float MaxHP => _maxHP;
     public float AttackStartRange => _attackStartRange;
     public float AttackChaseRange => _attackChaseRange;
 }
