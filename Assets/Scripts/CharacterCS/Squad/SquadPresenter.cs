@@ -124,4 +124,21 @@ public class SquadPresenter : MonoBehaviour
             _squadModel.StartDefendMode();
         }
     }
+
+    /// <summary>
+    /// 班長変更時の処理（死亡による自動選出時など）
+    /// </summary>
+    private void HandleLeaderChanged(UnitController newLeader)
+    {
+        UnitController currentSelected = _inputHandler.GetSelectedLeader();
+
+        // 現在選択中のユニットがこの班のメンバーでなくなった場合
+        // （死亡して班員リストから除外された場合）
+        if (currentSelected != null && !_squadModel.IsMember(currentSelected))
+        {
+            // 新しい班長を選択状態にする
+            _inputHandler.SetSelectedLeader(newLeader);
+            Debug.Log($"SquadPresenter: 操作対象を新班長に自動切り替え - {newLeader.gameObject.name}");
+        }
+    }
 }

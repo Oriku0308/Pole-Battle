@@ -37,6 +37,7 @@ public class PatrolState : AIStateBase
 
     /// <summary>
     /// パトロール状態の更新処理
+    /// 班長専用：目的地への移動と敵探索
     /// </summary>
     public override void Update()
     {
@@ -50,8 +51,8 @@ public class PatrolState : AIStateBase
             return;
         }
 
-        // 目的地への移動チェック
-        if (_hasDestination)
+        // 目的地への移動チェック（班長のみ）
+        if (_hasDestination && unit.IsLeader)
         {
             CheckDestinationReached();
         }

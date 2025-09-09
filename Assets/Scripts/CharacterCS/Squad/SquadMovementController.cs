@@ -76,12 +76,15 @@ public class SquadMovementController
     // 班員の追従を更新
     private void UpdateMemberFollow(UnitController member)
     {
-        if (_squadManager.CurrentLeader.IsMoving())
+        AIState leaderState = _squadManager.CurrentLeader.GetStateMachine().GetCurrentState();
+
+        // 班長がパトロール中または移動中なら追従
+        if (leaderState == AIState.Patrol || leaderState == AIState.Move || _squadManager.CurrentLeader.IsMoving())
         {
-            // 班長が移動中なら追従
             Vector3 followPosition = GetNaturalFollowPosition(member, _squadManager.CurrentLeader.Position);
             member.MoveTo(followPosition);
 
+            // 班員の状態を移動に設定
             if (member.GetStateMachine().GetCurrentState() != AIState.Move)
             {
                 member.GetStateMachine().ChangeState(AIState.Move);

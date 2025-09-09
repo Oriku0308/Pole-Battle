@@ -93,7 +93,7 @@ public class SquadManager : MonoBehaviour
 
     /// <summary>
     /// パトロールモード開始
-    /// 設定された目的地に向かって班全体で移動
+    /// 班長が目的地を目指し、班員は班長についていく
     /// </summary>
     public void StartPatrolMode()
     {
@@ -103,18 +103,26 @@ public class SquadManager : MonoBehaviour
             return;
         }
 
+        if (_currentLeader == null)
+        {
+            Debug.LogWarning($"{GetSquadName()}: 班長が設定されていません");
+            return;
+        }
+
         Debug.Log($"{GetSquadName()}: パトロールモード開始 → {_patrolDestination.name}");
 
-        // 班全体をパトロール状態に設定
+        // 班長のみパトロール状態に設定
+        _currentLeader.MoveTo(_patrolDestination.position);
+        _currentLeader.GetStateMachine().ChangeState(AIState.Patrol);
+
+        // 班員は班長追従状態に設定
         foreach (var unit in _spawnedUnits)
         {
-            if (unit != null && !unit.GetComponent<CombatManager>().IsDead)
+            if (unit != null && unit != _currentLeader && !unit.GetComponent<CombatManager>().IsDead)
             {
-                // 直接目的地に移動指示（PatrolStateが存在しない場合の対応）
-                unit.MoveTo(_patrolDestination.position);
-
-                // AI状態をパトロールに変更
-                unit.GetStateMachine().ChangeState(AIState.Patrol);
+                // 班員は移動状態で班長を追従
+                unit.StartFollowingLeader();
+                unit.GetStateMachine().ChangeState(AIState.Move);
             }
         }
     }
@@ -198,8 +206,27 @@ public class SquadManager : MonoBehaviour
         }
 
         UnitController newLeader = _spawnedUnits[0];
+        UnitController previousSelectedLeader = null;
+
+        // 以前の班長が選択されていたかチェック
+        InputHandler inputHandler = FindAnyObjectByType<InputHandler>();
+        if (inputHandler != null)
+        {
+            previousSelectedLeader = inputHandler.GetSelectedLeader();
+        }
+
         SetLeader(newLeader);
         Debug.Log($"{GetSquadName()}: 新しい班長に {newLeader.gameObject.name} を選出");
+
+        // 死亡した班長が選択されていた場合、新しい班長を選択状態にする
+        if (previousSelectedLeader != null && !_spawnedUnits.Contains(previousSelectedLeader))
+        {
+            if (inputHandler != null)
+            {
+                inputHandler.SetSelectedLeader(newLeader);
+                Debug.Log($"{GetSquadName()}: 操作対象を新しい班長に切り替え - {newLeader.gameObject.name}");
+            }
+        }
     }
 
     // 班全滅時の処理
