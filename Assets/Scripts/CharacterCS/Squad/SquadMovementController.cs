@@ -89,7 +89,7 @@ public class SquadMovementController
         }
         else
         {
-            // 班長が停止中の処理
+            // 班長停止時の処理
             HandleMemberWhenLeaderStopped(member);
         }
     }
@@ -169,5 +169,96 @@ public class SquadMovementController
         }
 
         return finalPosition;
+    }
+
+    // 班全体を目的地に移動
+    public void MoveSquadToDestination()
+    {
+        if (_destinationPoint == null)
+        {
+            Debug.LogWarning($"{_squadManager.GetSquadName()}: 目的地が設定されていません");
+            return;
+        }
+
+        Vector3 destinationPos = _destinationPoint.position;
+        Debug.Log($"{_squadManager.GetSquadName()}: 班全体を目的地へ移動開始 - {destinationPos}");
+
+        // 各班員に個別の目的地を設定
+        for (int i = 0; i < _squadManager.SpawnedUnits.Count; i++)
+        {
+            var unit = _squadManager.SpawnedUnits[i];
+            if (unit == null) continue;
+
+            Vector3 memberDestination = GetMemberDestinationPosition(destinationPos, i);
+
+            PatrolState patrolState = unit.GetComponent<PatrolState>();
+            if (patrolState != null)
+            {
+                patrolState.SetDestination(memberDestination);
+                unit.GetStateMachine().ChangeState(AIState.Patrol);
+            }
+        }
+
+        _squadManager.OnSquadMoved?.Invoke(destinationPos);
+    }
+
+    // --- 修正：SetDestinationメソッドを追加 ---
+
+    /// <summary>
+    /// 目的地を設定（Transform）
+    /// </summary>
+    public void SetDestination(Transform destination)
+    {
+        _destinationPoint = destination;
+        Debug.Log($"{_squadManager.GetSquadName()}: 目的地設定 - {destination.name}");
+    }
+
+    /// <summary>
+    /// 目的地を設定（座標）
+    /// </summary>
+    public void SetDestination(Vector3 destinationPosition)
+    {
+        GameObject tempDestination = new GameObject("TempDestination");
+        tempDestination.transform.position = destinationPosition;
+        _destinationPoint = tempDestination.transform;
+
+        Debug.Log($"{_squadManager.GetSquadName()}: 目的地設定 - {destinationPosition}");
+    }
+
+    // 班員の個別目的地を計算
+    private Vector3 GetMemberDestinationPosition(Vector3 baseDestination, int memberIndex)
+    {
+        if (memberIndex == 0) return baseDestination; // 最初の班員は基本位置
+
+        // 円形に配置
+        float angle = (memberIndex - 1) * (360f / _squadManager.SpawnedUnits.Count) * Mathf.Deg2Rad;
+        float radius = 2f;
+
+        Vector3 offset = new Vector3(
+            Mathf.Cos(angle) * radius,
+            0,
+            Mathf.Sin(angle) * radius
+        );
+
+        return baseDestination + offset;
+    }
+
+    // 目的地移動をキャンセル
+    public void CancelDestinationMove()
+    {
+        foreach (var unit in _squadManager.SpawnedUnits)
+        {
+            if (unit == null) continue;
+
+            PatrolState patrolState = unit.GetComponent<PatrolState>();
+            if (patrolState != null)
+            {
+                patrolState.ClearDestination();
+            }
+
+            unit.GetStateMachine().ChangeState(AIState.Defend);
+        }
+
+        Debug.Log($"{_squadManager.GetSquadName()}: 目的地移動キャンセル");
     }
 }

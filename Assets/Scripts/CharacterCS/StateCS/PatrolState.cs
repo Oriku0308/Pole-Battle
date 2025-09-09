@@ -1,188 +1,138 @@
 ﻿using UnityEngine;
 
 /// <summary>
-/// 目的地移動ステート - 指定された目的地に向かって移動する
+/// パトロール状態の具象クラス
+/// 設定された目的地に向かって移動する
 /// </summary>
 public class PatrolState : AIStateBase
 {
-    [Header("移動設定")]
-    [SerializeField] private float _arrivalThreshold = 1f; // 到着判定の距離
-
-    private CombatManager _combatManager;
-
-    private Vector3 _targetDestination; // 目的地の座標
-    private bool _hasDestination = false; // 目的地が設定されているか
-    private bool _isMovingToDestination = false; // 目的地に向かって移動中かどうか
-    private float _lastEnemyCheckTime = 0f;
-    private const float ENEMY_CHECK_INTERVAL = 0.2f;
+    private Vector3 _destination;           // 目的地
+    private bool _hasDestination = false;   // 目的地が設定されているか
+    private CombatManager _combatManager;   // 戦闘管理
 
     public PatrolState(UnitController unitController) : base(unitController)
     {
         _combatManager = unit.GetComponent<CombatManager>();
     }
 
+    /// <summary>
+    /// パトロール状態開始時の処理
+    /// </summary>
     public override void Enter()
     {
-        Debug.Log($"{unit.gameObject.name}: 目的地移動開始");
-        unit.SetColor(Color.blue); // 移動中は青色
+        Debug.Log($"{unit.gameObject.name}: パトロール状態開始");
 
-        // 通常速度に設定
-        _combatManager?.SetNormalSpeed();
-
-        // 目的地が設定されていない場合
-        if (!_hasDestination)
+        // 戦闘速度に設定
+        if (_combatManager != null)
         {
-            Debug.LogWarning($"{unit.gameObject.name}: 目的地が設定されていません");
-            return;
+            _combatManager.SetCombatSpeed();
         }
 
-        // 目的地に向かって移動開始
-        StartMovingToDestination();
-        _lastEnemyCheckTime = 0f;
+        // 目的地が設定されていれば移動開始
+        if (_hasDestination)
+        {
+            unit.MoveTo(_destination);
+        }
     }
 
+    /// <summary>
+    /// パトロール状態の更新処理
+    /// </summary>
     public override void Update()
     {
-        if (_combatManager == null || _combatManager.IsDead) return;
-
-        // 戦闘中は敵を優先
-        CheckForEnemies();
-
-        // 目的地が設定されていない場合は待機
-        if (!_hasDestination)
+        // 敵を探索
+        Transform enemy = SearchForEnemies();
+        if (enemy != null)
         {
-            unit.GetStateMachine().ChangeState(AIState.Defend);
+            // 敵発見：攻撃状態に遷移
+            _combatManager.CurrentTarget = enemy;
+            unit.GetStateMachine().ChangeState(AIState.Attack);
             return;
         }
 
-        // 目的地に向かって移動中の処理
-        if (_isMovingToDestination)
+        // 目的地への移動チェック
+        if (_hasDestination)
         {
-            CheckArrivalAtDestination();
+            CheckDestinationReached();
         }
     }
 
+    /// <summary>
+    /// パトロール状態終了時の処理
+    /// </summary>
     public override void Exit()
     {
-        Debug.Log($"{unit.gameObject.name}: 目的地移動終了");
-        unit.StopMoving();
-    }
+        Debug.Log($"{unit.gameObject.name}: パトロール状態終了");
 
-    /// <summary>
-    /// 敵検出処理
-    /// </summary>
-    private void CheckForEnemies()
-    {
-        if (Time.time - _lastEnemyCheckTime > ENEMY_CHECK_INTERVAL)
+        // 通常速度に戻す
+        if (_combatManager != null)
         {
-            // 攻撃開始範囲内の敵を検索
-            Transform enemy = _combatManager.FindEnemyInAttackStartRange();
-            if (enemy != null)
-            {
-                Debug.Log($"{unit.gameObject.name}: 移動中に敵発見！ - {enemy.name}");
-
-                // ターゲットを設定
-                _combatManager.CurrentTarget = enemy;
-
-                // 攻撃状態に移行
-                unit.GetStateMachine().ChangeState(AIState.Attack);
-                return;
-            }
-
-            _lastEnemyCheckTime = Time.time;
+            _combatManager.SetNormalSpeed();
         }
     }
 
     /// <summary>
-    /// 目的地を設定する（Squad.csから呼ばれる）
+    /// 目的地を設定
     /// </summary>
     public void SetDestination(Vector3 destination)
     {
-        _targetDestination = destination;
+        _destination = destination;
         _hasDestination = true;
 
-        Debug.Log($"{unit.gameObject.name}: 目的地設定 - {destination}");
+        Debug.Log($"{unit.gameObject.name}: パトロール目的地設定 - {destination}");
 
-        // 既に移動ステートの場合は即座に新しい目的地に向かう
+        // パトロール状態中なら即座に移動開始
         if (unit.GetStateMachine().GetCurrentState() == AIState.Patrol)
         {
-            StartMovingToDestination();
+            unit.MoveTo(_destination);
         }
     }
 
     /// <summary>
-    /// 目的地をクリアする
+    /// 目的地をクリア
     /// </summary>
     public void ClearDestination()
     {
         _hasDestination = false;
-        _isMovingToDestination = false;
-        unit.StopMoving();
-
-        Debug.Log($"{unit.gameObject.name}: 目的地クリア");
+        Debug.Log($"{unit.gameObject.name}: パトロール目的地クリア");
     }
 
     /// <summary>
-    /// 目的地に向かって移動開始
+    /// 敵を探索
     /// </summary>
-    private void StartMovingToDestination()
+    private Transform SearchForEnemies()
     {
-        if (!_hasDestination) return;
+        if (_combatManager == null) return null;
 
-        unit.MoveTo(_targetDestination);
-        _isMovingToDestination = true;
-
-        Debug.Log($"{unit.gameObject.name}: 目的地への移動開始 - {_targetDestination}");
+        // 攻撃開始範囲内の敵を探索
+        return _combatManager.FindEnemyInAttackStartRange();
     }
 
     /// <summary>
-    /// 目的地到着チェック
+    /// 目的地到達チェック
     /// </summary>
-    private void CheckArrivalAtDestination()
+    private void CheckDestinationReached()
     {
         if (!unit.IsMoving())
         {
-            OnArriveAtDestination();
+            float distanceToDestination = Vector3.Distance(unit.Position, _destination);
+
+            if (distanceToDestination <= 2f) // 目的地到達判定
+            {
+                Debug.Log($"{unit.gameObject.name}: パトロール目的地到達");
+
+                // 防衛状態に遷移
+                unit.GetStateMachine().ChangeState(AIState.Defend);
+            }
+            else
+            {
+                // まだ到達していない場合は再度移動
+                unit.MoveTo(_destination);
+            }
         }
-    }
-
-    /// <summary>
-    /// 目的地到着時の処理
-    /// </summary>
-    private void OnArriveAtDestination()
-    {
-        _isMovingToDestination = false;
-        unit.StopMoving();
-
-        Debug.Log($"{unit.gameObject.name}: 目的地に到着");
-
-        // 目的地到着後は防衛状態に移行
-        unit.GetStateMachine().ChangeState(AIState.Defend);
-    }
-
-    /// <summary>
-    /// 状態遷移可否の判定
-    /// </summary>
-    public override bool CanTransitionTo(AIState newState)
-    {
-        // 攻撃状態への遷移は常に許可（敵発見時）
-        if (newState == AIState.Attack)
-        {
-            return true;
-        }
-
-        // 防衛状態への遷移は許可
-        if (newState == AIState.Defend)
-        {
-            return true;
-        }
-
-        // その他の状態への遷移も基本的に許可
-        return true;
     }
 
     // プロパティ
     public bool HasDestination => _hasDestination;
-    public Vector3 TargetDestination => _targetDestination;
-    public bool IsMovingToDestination => _isMovingToDestination;
+    public Vector3 Destination => _destination;
 }
