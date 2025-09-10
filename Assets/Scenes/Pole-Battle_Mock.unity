@@ -660,10 +660,7 @@ MonoBehaviour:
   _squadData: {fileID: 11400000, guid: 5a13b0e2de780714da2033302e9d2a02, type: 2}
   _spawnPoint: {fileID: 1078335868}
   _autoSpawnOnStart: 1
-  _followUpdateInterval: 0.1
-  _leaderDistance: 1.5
-  _memberAvoidanceDistance: 1.5
-  _destinationPoint: {fileID: 1612803530}
+  _patrolDestination: {fileID: 1612803530}
 --- !u!4 &1127175500
 Transform:
   m_ObjectHideFlags: 0
@@ -726,10 +723,7 @@ MonoBehaviour:
   _squadData: {fileID: 11400000, guid: 43190e9789c37824d925e8b214951db3, type: 2}
   _spawnPoint: {fileID: 1612803530}
   _autoSpawnOnStart: 1
-  _followUpdateInterval: 0.1
-  _leaderDistance: 1.5
-  _memberAvoidanceDistance: 1.5
-  _destinationPoint: {fileID: 1078335868}
+  _patrolDestination: {fileID: 1078335868}
 --- !u!4 &1200921544
 Transform:
   m_ObjectHideFlags: 0

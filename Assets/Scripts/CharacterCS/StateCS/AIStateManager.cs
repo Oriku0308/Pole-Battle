@@ -1,9 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 
-/// <summary>
-/// AI状態の定義
-/// </summary>
 public enum AIState
 {
     Move,    // 移動状態
@@ -16,7 +13,7 @@ public enum AIState
 /// AIステートマシン
 /// ユニットの行動状態を管理し、状態遷移を制御する
 /// </summary>
-public class AIStateMachine : MonoBehaviour
+public class AIStateManager : MonoBehaviour
 {
     private Dictionary<AIState, AIStateBase> states; // 状態オブジェクトの辞書
     private AIState currentState; // 現在の状態
