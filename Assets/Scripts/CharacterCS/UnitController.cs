@@ -5,7 +5,7 @@ using System;
 public class UnitController : MonoBehaviour
 {
     private NavMeshAgent _agent; // NavMesh移動制御
-    private AIStateMachine _stateMachine; // AI状態管理
+    private AIStateManager _stateManager; // AI状態管理
     private Renderer _unitRenderer; // 見た目（色変更用）
     private bool _isLeader = false; // 班長フラグ
     private bool _isFollowingLeader = false; // 班長追従中フラグ
@@ -32,7 +32,7 @@ public class UnitController : MonoBehaviour
     private void Start()
     {
         // AIステートマシンを取得
-        _stateMachine = GetComponent<AIStateMachine>();
+        _stateManager = GetComponent<AIStateManager>();
     }
 
     // --- 公開メソッド（Squadから呼ばれる） ---
@@ -49,9 +49,9 @@ public class UnitController : MonoBehaviour
     {
         _isFollowingLeader = false;
 
-        if (_stateMachine != null && _stateMachine.GetCurrentState() != AIState.Defend)
+        if (_stateManager != null && _stateManager.GetCurrentState() != AIState.Defend)
         {
-            _stateMachine.ChangeState(AIState.Defend);
+            _stateManager.ChangeState(AIState.Defend);
         }
 
         Debug.Log($"{gameObject.name}: 追従停止 - 防衛状態へ");
@@ -145,7 +145,7 @@ public class UnitController : MonoBehaviour
     }
 
     // プロパティ
-    public AIStateMachine GetStateMachine() => _stateMachine;
+    public AIStateManager GetStateManager() => _stateManager;
     public bool IsLeader => _isLeader;
     public bool IsFollowingLeader => _isFollowingLeader;
     public Vector3 Position => transform.position;

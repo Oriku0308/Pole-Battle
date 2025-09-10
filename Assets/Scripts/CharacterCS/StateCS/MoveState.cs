@@ -28,7 +28,7 @@ public class MoveState : AIStateBase
         {
             Debug.Log($"{unit.gameObject.name}: 移動完了、防衛状態へ");
             unit.StopFollowing();
-            unit.GetStateMachine().ChangeState(AIState.Defend);
+            unit.GetStateManager().ChangeState(AIState.Defend);
         }
     }
 

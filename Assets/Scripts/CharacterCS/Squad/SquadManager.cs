@@ -113,7 +113,7 @@ public class SquadManager : MonoBehaviour
 
         // 班長のみパトロール状態に設定
         _currentLeader.MoveTo(_patrolDestination.position);
-        _currentLeader.GetStateMachine().ChangeState(AIState.Patrol);
+        _currentLeader.GetStateManager().ChangeState(AIState.Patrol);
 
         // 班員は班長追従状態に設定
         foreach (var unit in _spawnedUnits)
@@ -122,7 +122,7 @@ public class SquadManager : MonoBehaviour
             {
                 // 班員は移動状態で班長を追従
                 unit.StartFollowingLeader();
-                unit.GetStateMachine().ChangeState(AIState.Move);
+                unit.GetStateManager().ChangeState(AIState.Move);
             }
         }
     }
@@ -141,7 +141,7 @@ public class SquadManager : MonoBehaviour
             if (unit != null && !unit.GetComponent<CombatManager>().IsDead)
             {
                 unit.StopMoving(); // 移動を停止
-                unit.GetStateMachine().ChangeState(AIState.Defend);
+                unit.GetStateManager().ChangeState(AIState.Defend);
             }
         }
     }

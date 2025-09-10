@@ -139,7 +139,7 @@ public class AttackState : AIStateBase
     /// </summary>
     private void RememberPreviousState()
     {
-        AIState currentAIState = unit.GetStateMachine().GetCurrentState();
+        AIState currentAIState = unit.GetStateManager().GetCurrentState();
 
         // 現在の状態が攻撃状態でない場合のみ記憶
         if (currentAIState != AIState.Attack)
@@ -161,7 +161,7 @@ public class AttackState : AIStateBase
     private void ReturnToPreviousState()
     {
         Debug.Log($"{unit.gameObject.name}: 前の状態に復帰 - {previousState}");
-        unit.GetStateMachine().ChangeState(previousState);
+        unit.GetStateManager().ChangeState(previousState);
     }
 
     /// <summary>

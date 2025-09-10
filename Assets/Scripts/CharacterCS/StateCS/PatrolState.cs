@@ -47,7 +47,7 @@ public class PatrolState : AIStateBase
         {
             // 敵発見：攻撃状態に遷移
             _combatManager.CurrentTarget = enemy;
-            unit.GetStateMachine().ChangeState(AIState.Attack);
+            unit.GetStateManager().ChangeState(AIState.Attack);
             return;
         }
 
@@ -83,7 +83,7 @@ public class PatrolState : AIStateBase
         Debug.Log($"{unit.gameObject.name}: パトロール目的地設定 - {destination}");
 
         // パトロール状態中なら即座に移動開始
-        if (unit.GetStateMachine().GetCurrentState() == AIState.Patrol)
+        if (unit.GetStateManager().GetCurrentState() == AIState.Patrol)
         {
             unit.MoveTo(_destination);
         }
@@ -123,7 +123,7 @@ public class PatrolState : AIStateBase
                 Debug.Log($"{unit.gameObject.name}: パトロール目的地到達");
 
                 // 防衛状態に遷移
-                unit.GetStateMachine().ChangeState(AIState.Defend);
+                unit.GetStateManager().ChangeState(AIState.Defend);
             }
             else
             {

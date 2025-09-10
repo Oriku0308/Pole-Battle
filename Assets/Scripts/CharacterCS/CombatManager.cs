@@ -182,7 +182,7 @@ public class CombatManager : MonoBehaviour
 
             // 移動とAIを停止
             _unitController.StopMoving();
-            _unitController.GetStateMachine().enabled = false;
+            _unitController.GetStateManager().enabled = false;
         }
 
         // 見た目を変更

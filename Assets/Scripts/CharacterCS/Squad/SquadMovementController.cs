@@ -40,7 +40,7 @@ public class SquadMovementController
         yield return null;
 
         _squadManager.CurrentLeader.MoveTo(targetPosition);
-        _squadManager.CurrentLeader.GetStateMachine().ChangeState(AIState.Move);
+        _squadManager.CurrentLeader.GetStateManager().ChangeState(AIState.Move);
 
         // 他の班員に追従開始を指示
         foreach (var member in _squadManager.SpawnedUnits)
@@ -76,7 +76,7 @@ public class SquadMovementController
     // 班員の追従を更新
     private void UpdateMemberFollow(UnitController member)
     {
-        AIState leaderState = _squadManager.CurrentLeader.GetStateMachine().GetCurrentState();
+        AIState leaderState = _squadManager.CurrentLeader.GetStateManager().GetCurrentState();
 
         // 班長がパトロール中または移動中なら追従
         if (leaderState == AIState.Patrol || leaderState == AIState.Move || _squadManager.CurrentLeader.IsMoving())
@@ -85,9 +85,9 @@ public class SquadMovementController
             member.MoveTo(followPosition);
 
             // 班員の状態を移動に設定
-            if (member.GetStateMachine().GetCurrentState() != AIState.Move)
+            if (member.GetStateManager().GetCurrentState() != AIState.Move)
             {
-                member.GetStateMachine().ChangeState(AIState.Move);
+                member.GetStateManager().ChangeState(AIState.Move);
             }
         }
         else
@@ -108,9 +108,9 @@ public class SquadMovementController
         {
             member.MoveTo(idealPosition);
 
-            if (member.GetStateMachine().GetCurrentState() != AIState.Move)
+            if (member.GetStateManager().GetCurrentState() != AIState.Move)
             {
-                member.GetStateMachine().ChangeState(AIState.Move);
+                member.GetStateManager().ChangeState(AIState.Move);
             }
         }
         else
@@ -198,7 +198,7 @@ public class SquadMovementController
             if (patrolState != null)
             {
                 patrolState.SetDestination(memberDestination);
-                unit.GetStateMachine().ChangeState(AIState.Patrol);
+                unit.GetStateManager().ChangeState(AIState.Patrol);
             }
         }
 
@@ -259,7 +259,7 @@ public class SquadMovementController
                 patrolState.ClearDestination();
             }
 
-            unit.GetStateMachine().ChangeState(AIState.Defend);
+            unit.GetStateManager().ChangeState(AIState.Defend);
         }
 
         Debug.Log($"{_squadManager.GetSquadName()}: 目的地移動キャンセル");
