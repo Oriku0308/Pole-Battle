@@ -70,7 +70,7 @@ public class DefendState : AIStateBase
                 combat.CurrentTarget = enemy;
 
                 // 攻撃状態に移行
-                unit.GetStateManager().ChangeState(AIState.Attack);
+                unit.StateManager.ChangeState(AIState.Attack);
                 return;
             }
 

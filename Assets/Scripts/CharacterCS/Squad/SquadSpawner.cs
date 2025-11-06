@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using System.Collections.Generic;
 
 public class SquadSpawner
 {
@@ -12,7 +11,9 @@ public class SquadSpawner
         _squadData = squadData;
     }
 
-    // 班員を生成
+    /// <summary>
+    /// 班員を生成
+    /// </summary>
     public void SpawnSquadMembers(Vector3 basePosition)
     {
         if (_squadData == null)
@@ -45,14 +46,15 @@ public class SquadSpawner
             }
 
             // 班との関連付け
-            unit.SetSquad(_squadManager);
             _squadManager.SpawnedUnits.Add(unit);
         }
 
         Debug.Log($"{_squadData.CompositionName}: 班生成完了 - {_squadManager.SpawnedUnits.Count}人");
     }
 
-    // スポーン位置を計算（円形フォーメーション）
+    /// <summary>
+    /// スポーン位置を計算（円形フォーメーション）
+    /// </summary>
     private Vector3 GetSpawnPosition(Vector3 basePosition, int index)
     {
         if (index == 0) return basePosition; // 最初のユニットは基本位置

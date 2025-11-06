@@ -125,7 +125,7 @@ public class AttackState : AIStateBase
         // 追跡開始
         if (!isChasing)
         {
-            combat.SetNormalSpeed(); // 追跡時は通常速度
+            combat.SetCombatSpeed();
             isChasing = true;
             Debug.Log($"{unit.gameObject.name}: 追跡開始");
         }
@@ -139,7 +139,7 @@ public class AttackState : AIStateBase
     /// </summary>
     private void RememberPreviousState()
     {
-        AIState currentAIState = unit.GetStateManager().GetCurrentState();
+        AIState currentAIState = unit.StateManager.GetCurrentState();
 
         // 現在の状態が攻撃状態でない場合のみ記憶
         if (currentAIState != AIState.Attack)
@@ -161,7 +161,7 @@ public class AttackState : AIStateBase
     private void ReturnToPreviousState()
     {
         Debug.Log($"{unit.gameObject.name}: 前の状態に復帰 - {previousState}");
-        unit.GetStateManager().ChangeState(previousState);
+        unit.StateManager.ChangeState(previousState);
     }
 
     /// <summary>

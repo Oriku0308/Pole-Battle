@@ -6,37 +6,45 @@
 /// </summary>
 public class CombatManager : MonoBehaviour
 {
+    private const float DEATH_DELAY = 3f;
+    private const float MIN_HP = 0f;
+
     [Header("攻撃設定")]
-    [SerializeField] private float _attackStartRange = 2f;  // 攻撃開始範囲（狭い方）
-    [SerializeField] private float _attackChaseRange = 10f; // 攻撃可能範囲（広い方）
-    [SerializeField] private float _attackInterval = 1f;    // 攻撃間隔
-    [SerializeField] private float _attackDamage = 20f;     // 攻撃力
+    [SerializeField] private float _attackStartRange = 2f;
+    [SerializeField] private float _attackChaseRange = 10f;
+    [SerializeField] private float _attackInterval = 1f;
+    [SerializeField] private float _attackDamage = 20f;
 
     [Header("移動設定")]
-    [SerializeField] private float _normalSpeed = 5f;       // 通常移動速度
-    [SerializeField] private float _combatSpeed = 3f;       // 戦闘時移動速度
+    [SerializeField] private float _normalSpeed = 5f;
+    [SerializeField] private float _combatSpeed = 3f;
 
     [Header("HP設定")]
-    [SerializeField] private float _maxHP = 100f;           // 最大HP
-    [SerializeField] private float _currentHP;              // 現在HP
+    [SerializeField] private float _maxHP = 100f;
+    [SerializeField] private float _currentHP;
 
     // 内部状態
-    private bool _isDead = false;                           // 死亡フラグ
-    private Transform _currentTarget;                       // 現在のターゲット
-    private float _lastAttackTime = 0f;                     // 最後の攻撃時刻
+    private bool _isDead = false;
+    private Transform _currentTarget;
+    private float _lastAttackTime = 0f;
 
     // コンポーネント参照
     private UnitController _unitController;
     private UnityEngine.AI.NavMeshAgent _agent;
+    private Renderer _renderer;
+    private Collider _collider;
 
     void Awake()
     {
-        // コンポーネント取得と初期化
+        // コンポーネント取得
         _unitController = GetComponent<UnitController>();
         _agent = GetComponent<UnityEngine.AI.NavMeshAgent>();
+        _renderer = GetComponent<Renderer>();
+        _collider = GetComponent<Collider>();
+
+        // 初期化
         _currentHP = _maxHP;
 
-        // 移動速度を通常速度に設定
         if (_agent != null)
         {
             _agent.speed = _normalSpeed;
@@ -51,7 +59,7 @@ public class CombatManager : MonoBehaviour
     public Transform FindEnemyInAttackStartRange()
     {
         return FindNearestEnemyInRange(_attackStartRange);
-    } 
+    }
 
     /// <summary>
     /// 指定範囲内の最も近い敵を検索
@@ -64,24 +72,20 @@ public class CombatManager : MonoBehaviour
         Transform nearestEnemy = null;
         float nearestDistance = float.MaxValue;
 
-        // 範囲内のすべてのコライダーをチェック
         foreach (var collider in nearbyColliders)
         {
-            if (collider.transform == transform) continue; // 自分自身は除外
+            if (collider.transform == transform) continue;
 
             UnitController otherUnit = collider.GetComponent<UnitController>();
-            if (otherUnit != null && IsEnemy(otherUnit))
+            if (otherUnit == null || !IsEnemy(otherUnit)) continue;
+
+            if (otherUnit.Combat == null || otherUnit.Combat.IsDead) continue;
+
+            float distance = Vector3.Distance(transform.position, collider.transform.position);
+            if (distance < nearestDistance)
             {
-                CombatManager enemyCombat = collider.GetComponent<CombatManager>();
-                if (enemyCombat != null && !enemyCombat.IsDead)
-                {
-                    float distance = Vector3.Distance(transform.position, collider.transform.position);
-                    if (distance < nearestDistance)
-                    {
-                        nearestDistance = distance;
-                        nearestEnemy = collider.transform;
-                    }
-                }
+                nearestDistance = distance;
+                nearestEnemy = collider.transform;
             }
         }
 
@@ -89,13 +93,12 @@ public class CombatManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 敵かどうかの判定（簡易版）
+    /// 敵かどうかの判定
     /// </summary>
     private bool IsEnemy(UnitController otherUnit)
     {
         if (_unitController == null) return false;
 
-        // 簡易判定：親オブジェクト（Squad）が異なれば敵
         Transform mySquad = _unitController.transform.parent;
         Transform otherSquad = otherUnit.transform.parent;
 
@@ -124,7 +127,6 @@ public class CombatManager : MonoBehaviour
 
         _lastAttackTime = Time.time;
 
-        // ダメージ処理
         CombatManager targetCombat = target.GetComponent<CombatManager>();
         if (targetCombat != null)
         {
@@ -141,9 +143,16 @@ public class CombatManager : MonoBehaviour
     private bool CanAttack(Transform target)
     {
         if (_isDead || target == null) return false;
-        if (Time.time - _lastAttackTime < _attackInterval) return false; // クールダウン中
-
+        if (IsOnCooldown()) return false;
         return IsTargetInAttackStartRange(target);
+    }
+
+    /// <summary>
+    /// クールダウン中かチェック
+    /// </summary>
+    private bool IsOnCooldown()
+    {
+        return Time.time - _lastAttackTime < _attackInterval;
     }
 
     // --- ダメージ・HP管理 ---
@@ -156,12 +165,11 @@ public class CombatManager : MonoBehaviour
         if (_isDead) return;
 
         _currentHP -= damage;
-        _currentHP = Mathf.Max(0, _currentHP); // 0以下にならないよう制限
+        _currentHP = Mathf.Max(MIN_HP, _currentHP);
 
         Debug.Log($"{gameObject.name}: {damage}ダメージ受ける (HP: {_currentHP}/{_maxHP})");
 
-        // HP0なら死亡処理
-        if (_currentHP <= 0)
+        if (_currentHP <= MIN_HP)
         {
             Die();
         }
@@ -174,46 +182,39 @@ public class CombatManager : MonoBehaviour
     {
         _isDead = true;
 
-        // 班に死亡を通知
         if (_unitController != null)
         {
             SquadManager squad = _unitController.transform.parent?.GetComponent<SquadManager>();
             squad?.OnUnitDied(_unitController);
 
-            // 移動とAIを停止
             _unitController.StopMoving();
-            _unitController.GetStateManager().enabled = false;
+            _unitController.StateManager.enabled = false;
         }
 
-        // 見た目を変更
-        GetComponent<Renderer>().material.color = Color.gray;
-        GetComponent<Collider>().enabled = false;
+        if (_renderer != null)
+        {
+            _renderer.material.color = Color.gray;
+        }
+
+        if (_collider != null)
+        {
+            _collider.enabled = false;
+        }
 
         Debug.Log($"{gameObject.name}: 死亡");
-        Destroy(gameObject, 3f); // 3秒後に削除
+        Destroy(gameObject, DEATH_DELAY);
     }
 
     // --- 速度制御 ---
 
-    /// <summary>
-    /// 戦闘速度に変更（攻撃時の速度低下）
-    /// </summary>
-    public void SetCombatSpeed()
-    {
-        if (_agent != null)
-        {
-            _agent.speed = _combatSpeed;
-        }
-    }
+    public void SetCombatSpeed() => SetAgentSpeed(_combatSpeed);
+    public void SetNormalSpeed() => SetAgentSpeed(_normalSpeed);
 
-    /// <summary>
-    /// 通常速度に変更
-    /// </summary>
-    public void SetNormalSpeed()
+    private void SetAgentSpeed(float speed)
     {
         if (_agent != null)
         {
-            _agent.speed = _normalSpeed;
+            _agent.speed = speed;
         }
     }
 

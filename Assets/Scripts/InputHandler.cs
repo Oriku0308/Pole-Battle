@@ -83,7 +83,7 @@ public class InputHandler : MonoBehaviour
             else
             {
                 // 個別ユニットをパトロール状態に
-                _selectedLeader.GetStateManager().ChangeState(AIState.Patrol);
+                _selectedLeader.StateManager.ChangeState(AIState.Patrol);
             }
 
             OnPatrolCommand?.Invoke();
@@ -113,7 +113,7 @@ public class InputHandler : MonoBehaviour
             else
             {
                 // 個別ユニットを防衛状態に
-                _selectedLeader.GetStateManager().ChangeState(AIState.Defend);
+                _selectedLeader.StateManager.ChangeState(AIState.Defend);
             }
 
             OnDefendCommand?.Invoke();
@@ -133,7 +133,7 @@ public class InputHandler : MonoBehaviour
         {
             if (unit != null && !unit.GetComponent<CombatManager>().IsDead)
             {
-                unit.GetStateManager().ChangeState(AIState.Patrol);
+                unit.StateManager.ChangeState(AIState.Patrol);
             }
         }
         Debug.Log($"{squad.name}: 班全体をパトロール状態に設定");
@@ -148,7 +148,7 @@ public class InputHandler : MonoBehaviour
         {
             if (unit != null && !unit.GetComponent<CombatManager>().IsDead)
             {
-                unit.GetStateManager().ChangeState(AIState.Defend);
+                unit.StateManager.ChangeState(AIState.Defend);
             }
         }
         Debug.Log($"{squad.name}: 班全体を防衛状態に設定");

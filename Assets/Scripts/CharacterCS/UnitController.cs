@@ -4,47 +4,43 @@ using System;
 
 public class UnitController : MonoBehaviour
 {
-    private NavMeshAgent _agent; // NavMesh移動制御
-    private AIStateManager _stateManager; // AI状態管理
-    private Renderer _unitRenderer; // 見た目（色変更用）
-    private bool _isLeader = false; // 班長フラグ
-    private bool _isFollowingLeader = false; // 班長追従中フラグ
-    private Transform _currentTarget; // 現在のターゲット
-    private SquadManager _mySquad; // 所属班の参照
+    private NavMeshAgent _agent;
+    private AIStateManager _stateManager;
+    private Renderer _unitRenderer;
+    private bool _isLeader = false;
+    private bool _isFollowingLeader = false;
     private Color _originalColor; // 元の色
+    private CombatManager _combat;
+
 
     private void Awake()
     {
-        // コンポーネント取得と初期設定
         _agent = GetComponent<NavMeshAgent>();
         _unitRenderer = GetComponent<Renderer>();
+        _combat = GetComponent<CombatManager>();
+        _stateManager = GetComponent<AIStateManager>();
 
         if (_unitRenderer != null)
         {
             _originalColor = _unitRenderer.material.color;
         }
 
-        // NavMeshAgent設定
         _agent.speed = 5f;
         _agent.stoppingDistance = 0.1f;
     }
 
-    private void Start()
-    {
-        // AIステートマシンを取得
-        _stateManager = GetComponent<AIStateManager>();
-    }
-
-    // --- 公開メソッド（Squadから呼ばれる） ---
-
-    // 班長追従を開始
+    /// <summary>
+    /// 班長追従を開始
+    /// </summary>
     public void StartFollowingLeader()
     {
         _isFollowingLeader = true;
         Debug.Log($"{gameObject.name}: 班長追従開始");
     }
 
-    // 追従を停止して防衛状態に移行
+    /// <summary>
+    /// 追従を停止して防衛状態に移行
+    /// </summary>
     public void StopFollowing()
     {
         _isFollowingLeader = false;
@@ -57,14 +53,9 @@ public class UnitController : MonoBehaviour
         Debug.Log($"{gameObject.name}: 追従停止 - 防衛状態へ");
     }
 
-    // 所属班を設定
-    public void SetSquad(SquadManager squad)
-    {
-        _mySquad = squad;
-        Debug.Log($"{gameObject.name}: 班設定完了 - {squad.gameObject.name}");
-    }
-
-    // 班長の設定・解除
+    /// <summary>
+    /// 班長の設定・解除
+    /// </summary>
     public void SetAsLeader(bool leader)
     {
         _isLeader = leader;
@@ -100,7 +91,9 @@ public class UnitController : MonoBehaviour
         }
     }
 
-    // 移動中かどうかを判定
+    /// <summary>
+    /// 移動中かどうかを判定
+    /// </summary>
     public bool IsMoving()
     {
         if (_agent == null) return false;
@@ -109,7 +102,9 @@ public class UnitController : MonoBehaviour
         return _agent.hasPath && _agent.remainingDistance > 0.3f;
     }
 
-    // 移動を停止
+    /// <summary>
+    /// 移動を停止
+    /// </summary>
     public void StopMoving()
     {
         if (_agent != null)
@@ -119,7 +114,9 @@ public class UnitController : MonoBehaviour
         }
     }
 
-    // 指定位置に移動
+    /// <summary>
+    /// 指定位置に移動
+    /// </summary>
     public void MoveTo(Vector3 position)
     {
         if (_agent != null)
@@ -135,7 +132,10 @@ public class UnitController : MonoBehaviour
         }
     }
 
-    // 色を設定（班長以外）
+    /// <summary>
+    /// 色を設定（班長以外）
+    /// </summary>
+    /// <param name="color"></param>
     public void SetColor(Color color)
     {
         if (_unitRenderer != null && !_isLeader)
@@ -145,8 +145,9 @@ public class UnitController : MonoBehaviour
     }
 
     // プロパティ
-    public AIStateManager GetStateManager() => _stateManager;
     public bool IsLeader => _isLeader;
     public bool IsFollowingLeader => _isFollowingLeader;
     public Vector3 Position => transform.position;
+    public CombatManager Combat => _combat;
+    public AIStateManager StateManager => _stateManager;
 }
